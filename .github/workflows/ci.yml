@@ -47,9 +47,13 @@ jobs:
           name: build-artifacts
           path: build/libs/*.jar
 
-      - name: Generate GPG key
+      - name: Generate GPG key in Docker
         run: |
-          echo "Generating GPG key..."
+          docker run --rm -v ${PWD}:/work -w /work \
+          ubuntu:latest /bin/bash -c "\
+          apt-get update && \
+          apt-get install -y gnupg && \
+          echo 'Generating GPG key...' && \
           cat >gen-key-script <<EOF
           %echo Generating a basic OpenPGP key
           Key-Type: default
@@ -62,10 +66,8 @@ jobs:
           %commit
           %echo done
           EOF
-          gpg --batch --gen-key gen-key-script
-
-      - name: Export the generated key
-        run: gpg --export -a "realWorldKey" > public.key
+          gpg --batch --gen-key gen-key-script && \
+          gpg --export -a 'realWorldKey' > public.key"
 
       - name: Sign the JAR file
         run: gpg --output build/libs/realworld-plain.jar.sig --detach-sig build/libs/realworld-plain.jar
