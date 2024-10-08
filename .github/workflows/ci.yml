@@ -55,12 +55,14 @@ jobs:
 
     steps:
       - name: Start application in background
-        run: |
-          nohup java -jar build/libs/realworld-plain.jar &
-          sleep 30 # Attendre 30 secondes pour que l'application démarre
-      - name: Wait for the application to start
+      - run: ./gradlew :bootstrap:bootRun &
 
-        run: ./wait-for-it.sh localhost:8080 -t 60
+      - name: Wait for application to start
+      - run: | 
+          echo "Waiting for application to start..." sleep 60
+
+      - name: Check if application is running
+      - run: curl --retry 10 --retry-delay 5 --retry-connrefused http://localhost:8080/actuator/health
       - uses: actions/checkout@v4
 
       - name: Install Postman CLI
