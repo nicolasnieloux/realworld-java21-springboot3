@@ -47,6 +47,10 @@ jobs:
           name: build-artifacts
           path: build/libs/*.jar
 
+      - name: Start application in background
+        run: |
+          nohup java -jar build/libs/realworld-plain.jar &
+          sleep 30 # Attendre 30 secondes pour que l'application démarre
 
   automated_api_tests_postman_cli:
     runs-on: ubuntu-latest
