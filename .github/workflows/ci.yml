@@ -47,6 +47,41 @@ jobs:
           name: build-artifacts
           path: build/libs/*.jar
 
+      - name: Generate GPG key
+        run: |
+          echo "Generating GPG key..."
+          gpg --batch --gen-key <<EOF
+          %echo Generating a basic OpenPGP key
+          Key-Type: default
+          Key-Length: 2048
+          Subkey-Type: default
+          Name-Real: realWorldKey
+          Name-Comment: with no passphrase
+          Name-Email: realworld@example.com
+          Expire-Date: 0
+          %commit
+          %echo done
+          EOF
+
+      - name: Export the generated key
+        run: gpg --export -a "realWorldKey" > public.key
+
+      - name: Sign the JAR file
+        run: gpg --output build/libs/realworld-plain.jar.sig --detach-sig build/libs/realworld-plain.jar
+
+      - name: Import the public key
+        run: gpg --import public.key
+
+      - name: Verify the signed JAR file
+        run: gpg --verify build/libs/realworld-plain.jar.sig build/libs/realworld-plain.jar
+
+      - name: Upload signed JAR artifact
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          name: signed-jar
+          path: build/libs/realworld-plain.jar.sig
+
   automated_api_tests_postman_cli:
     runs-on: ubuntu-latest
     needs: build
@@ -83,6 +118,6 @@ jobs:
         run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
 
       - name: Run API tests
-        run: >
-          postman collection run "28231268-859de912-d87f-416d-8077-5930fec3d39a" 
+        run: |
+          postman collection run "28231268-859de912-d87f-416d-8077-5930fec3d39a" \
           -e "28231268-97b78c55-c911-460b-9a77-e66b9906d8ce"
