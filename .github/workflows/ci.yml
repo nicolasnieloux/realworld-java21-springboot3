@@ -50,7 +50,7 @@ jobs:
       - name: Generate GPG key
         run: |
           echo "Generating GPG key..."
-          gpg --batch --gen-key <<EOF
+          cat >gen-key-script <<EOF
           %echo Generating a basic OpenPGP key
           Key-Type: default
           Key-Length: 2048
@@ -62,6 +62,7 @@ jobs:
           %commit
           %echo done
           EOF
+          gpg --batch --gen-key gen-key-script
 
       - name: Export the generated key
         run: gpg --export -a "realWorldKey" > public.key
