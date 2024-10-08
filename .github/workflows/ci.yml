@@ -47,18 +47,20 @@ jobs:
           name: build-artifacts
           path: build/libs/*.jar
 
-      - name: Start application in background
-        run: |
-          nohup java -jar build/libs/realworld-plain.jar &
-          sleep 30 # Attendre 30 secondes pour que l'application démarre
-      - name: Wait for the application to start
-        run: ./wait-for-it.sh localhost:8080 -t 60
+
 
   automated_api_tests_postman_cli:
     runs-on: ubuntu-latest
     needs: build
 
     steps:
+      - name: Start application in background
+        run: |
+          nohup java -jar build/libs/realworld-plain.jar &
+          sleep 30 # Attendre 30 secondes pour que l'application démarre
+      - name: Wait for the application to start
+
+        run: ./wait-for-it.sh localhost:8080 -t 60
       - uses: actions/checkout@v4
 
       - name: Install Postman CLI
