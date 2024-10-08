@@ -47,22 +47,43 @@ jobs:
           name: build-artifacts
           path: build/libs/*.jar
 
+  sign_artifacts:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+          path: build/libs/
+
+      - name: Import GPG key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+        shell: bash
+
+      - name: Sign the artifacts
+        run: |
+          gpg --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" --pinentry-mode loopback --yes --detach-sign --armor \
+          --output build/libs/YOUR_APP.jar.asc build/libs/YOUR_APP.jar
+
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: signed-build-artifacts
+          path: build/libs/*.asc
+
   automated_api_tests_postman_cli:
     runs-on: ubuntu-latest
     needs: build
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        uses: actions/checkout@v3
 
       - name: Start application in background
         run: ./gradlew :bootstrap:bootRun &
@@ -70,10 +91,16 @@ jobs:
       - name: Wait for application to start
         run: |
           echo "Waiting for application to start..."
-          sleep 60
+          sleep 120  # Augmenter le temps d'attente à 120 secondes
 
       - name: Check if application is running
         run: curl --retry 10 --retry-delay 5 --retry-connrefused http://localhost:8080/actuator/health
+
+      - name: Gather application logs (in case of failure)
+        if: failure()
+        run: |
+          echo "Collecting application logs..."
+          cat build/libs/YOUR_APP.log  # Assure-toi que ce chemin est correct pour les logs de ton application
 
       - name: Install Postman CLI
         run: |
