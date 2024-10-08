@@ -47,6 +47,60 @@ jobs:
           name: build-artifacts
           path: build/libs/*.jar
 
+
+      - name: Set up GPG
+        run: |
+          echo "$GPG_PRIVATE_KEY" | base64 --decode > private.key
+          gpg --batch --import private.key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Sign artifacts
+        run: |
+          gpg --pinentry-mode loopback --batch --yes --passphrase "${{ secrets.GPG_PASSPHRASE }}" --output build/libs/realworld-plain.jar.sig --detach-sign build/libs/realworld-plain.jar
+
+      - name: Upload signature and artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-artifact
+          path: build/libs/realworld-plain.jar.sig
+
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-jar
+          path: build/libs/realworld-plain.jar
+
+  verify-signature:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download signed artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: signed-artifact
+          path: build/libs/
+
+      - name: Download JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: built-jar
+          path: build/libs/
+
+      - name: Set up GPG
+        run: |
+          echo "$GPG_PUBLIC_KEY" > public.key
+          gpg --batch --import public.key
+        env:
+          GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+
+      - name: Verify artifact signature
+        run: gpg --verify build/libs/realworld-plain.jar.sig build/libs/realworld-plain.jar
+
   automated_api_tests_postman_cli:
     runs-on: ubuntu-latest
     needs: build
